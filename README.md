@@ -2,17 +2,29 @@
 
 Simple tool to retrieve accounting-relevant data for settled anyhedge contracts and output as CSV file
 
+## general mode of operation
+
+given a configured list of payout addresses, this tool collects all transactions involving those addresses and checks wether or not they are anyhedge settlement transactions. If so, 
+ * prefunding tx
+ * funding tx
+ * payout tx
+
+are all determined and fetched from electrum server. The users `side` is determined (hedge/long) and the data is output as csv (partial data) and json (full dump).
+
 ## preparation
 
-  * install dependencies
+ * you'll need `node` and `npm` on your system
+ * install dependencies using 
 
-    `#> npm install`
+   `#> npm install`
 
-  * copy `config_example.js` to `config.js` and edit it
+ * copy `config_example.js` to `config.js` 
+
+   `#> edit config.js`
 
 ## running 
 
-  `#> node anyhedge-accountant.js`
+ * `#> node anyhedge-accountant.js`
 
 ## output
 
