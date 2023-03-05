@@ -1,5 +1,6 @@
 # anyhedge-accountant
-Simple tool to retrieve accounting-relevant data for anyhedge contracts and output as CSV file
+
+Simple tool to retrieve accounting-relevant data for settled anyhedge contracts and output as CSV file
 
 # preparation
 
@@ -16,4 +17,3 @@ Simple tool to retrieve accounting-relevant data for anyhedge contracts and outp
 # running 
 
   `#> node anyhedge-accountant.js`
-
