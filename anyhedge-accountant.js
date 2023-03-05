@@ -71,7 +71,7 @@ const findPrefundingTx = function(data) {
 		data.derived.payoutInSatoshis = data.anyhedge.settlement.hedgePayoutInSatoshis;
 		user_funding_index = 0
 	}
-	if (hedge_vout && long_vout.scriptPubKey.addresses.includes(data.payout_address)) {
+	if (long_vout && long_vout.scriptPubKey.addresses.includes(data.payout_address)) {
 		data.derived.side = 'long';
 		data.derived.fundingAmountInSatoshis = Math.round(long_vout.value * 1E8);
 		data.derived.payoutInSatoshis = data.anyhedge.settlement.longPayoutInSatoshis;
@@ -79,12 +79,16 @@ const findPrefundingTx = function(data) {
 	}
 
 	// find and retrieve prefunding tx
-	var prefunding_txid = data.funding_tx.vin[user_funding_index].txid // first input of funding tx is user funding
-	return electrum.request('blockchain.transaction.get', prefunding_txid, true)
-	.then(tx => {
-		data.prefunding_tx = tx 
+	if (user_funding_index) {
+		var prefunding_txid = data.funding_tx.vin[user_funding_index].txid // first input of funding tx is user funding
+		return electrum.request('blockchain.transaction.get', prefunding_txid, true)
+		.then(tx => {
+			data.prefunding_tx = tx 
+			return data;
+		});
+	} else {
 		return data;
-	});
+	}
 }	
 
 // calculate more drived values
