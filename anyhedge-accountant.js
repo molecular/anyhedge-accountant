@@ -56,12 +56,11 @@ const findPrefundingTx = function(data) {
 	// also set user_funding_index to be able to find prefunding tx later
 	var long_vout, hedge_vout = (null, null)
 	data.payout_tx.vout.forEach(vout => {
-		console.log("vout.value*1E8", vout.value*1E8)
+		//console.log("vout.value*1E8", vout.value*1E8) 
+		// TODO: this is not good way to compare
 		if (Math.round(vout.value * 1E8) == data.anyhedge.settlement.hedgePayoutInSatoshis) hedge_vout = vout;
 		if (Math.round(vout.value * 1E8) == data.anyhedge.settlement.longPayoutInSatoshis) long_vout = vout;
 	})
-	console.log("hedge_vout", hedge_vout)
-	console.log("long_vout", long_vout)
 	data.derived = {
 		side: '<unkown>'
 	}
@@ -78,7 +77,6 @@ const findPrefundingTx = function(data) {
 		data.derived.payoutInSatoshis = data.anyhedge.settlement.longPayoutInSatoshis;
 		user_funding_index = 1
 	}
-	console.log("side", data.side);
 
 	// find and retrieve prefunding tx
 	var prefunding_txid = data.funding_tx.vin[user_funding_index].txid // first input of funding tx is user funding
@@ -114,6 +112,7 @@ const writeCSV = function(filename) {
 const writeJSON = function(filename) {
 	return (results) => {
 		fs.writeFile(filename, JSON.stringify(results), 'utf8', (err) => console.log);
+		console.log(`wrote ${results.length} items to ${filename}`)
 		return results;
 	}
 }
