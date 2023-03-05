@@ -1,0 +1,19 @@
+{
+  "name": "anyhedge-accountant",
+  "version": "0.1-beta",
+  "description": "Simple tool to retrieve accounting-relevant data for settled anyhedge contracts and output as CSV file",
+  "main": "anyhedge-accountant.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "run": "node anyhedge-accountant.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@generalprotocols/anyhedge": "^1.0.0",
+    "csv-stringify": "^6.2.1",
+    "electrum-cash": "^2.0.10",
+    "json-arraybuffer-reviver": "=1.0.2"
+  },
+  "type": "module"
+}
