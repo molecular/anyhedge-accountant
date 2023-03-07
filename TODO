@@ -1,0 +1,5 @@
+TODO
+
+ * Use BigNumber or Decimal for amount conversions/comparisons
+ * offer formatted output columns for amounts, times
+ 

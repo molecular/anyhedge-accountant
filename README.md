@@ -4,7 +4,7 @@ Simple tool to retrieve accounting-relevant data for settled anyhedge contracts 
 
 ## general mode of operation
 
-given a configured list of payout addresses, this tool collects all transactions involving those addresses and checks wether or not they are anyhedge settlement transactions. If so, 
+given either a configured list of payout addresses or a directory with electron cash history export csv files, this tool collects all transactions involving those addresses and checks wether or not they are anyhedge settlement transactions. If so, 
  * prefunding tx
  * funding tx
  * payout tx

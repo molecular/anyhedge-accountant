@@ -29,6 +29,12 @@ const findPayoutTx = function(data) {
 	return electrum.request('blockchain.transaction.get', data.anyhedge.settlement.settlementTransactionHash, true)
 	.then((tx) => {
 		data.payout_tx = tx
+		// when using wallet exports, find payout_address by matching delta to vout.value
+		if (config.selector.electron_cash_wallet_exports) {
+			data.payout_tx.vout.forEach(vout => {
+				if (vout.value == Number(data.delta)) data.payout_address = vout.scriptPubKey.addresses[0];
+			})
+		}
 		return data;
 	})
 	.catch((err) => { console.log(err) })
@@ -126,6 +132,67 @@ function flattenArrays(arrays) {
 	return arrays.reduce((o, i) => { return o.concat(i); }, [])
 }
 
+// ec wallet export handling
+function handleWalletExports() {
+
+	function loadWallet(path, filename, wallet_txs) {
+		console.log("loading wallet", filename)
+		const data = fs.readFileSync(path + "/" + filename, 'UTF-8').split(/\r?\n/)
+		const valuesRegExp = /(?:\"([^\"]*(?:\"\"[^\"]*)*)\")|([^\",]+)/g;
+		const names = ["tx_hash", "label", "delta", "date"];
+		data.forEach((d) => {
+			let i = 0, key = null, matches = null, entry = {wallet: filename};
+			while (matches = valuesRegExp.exec(d)) {
+				let v = matches[1] || matches[2] || ""
+				v = v.replace(/\"\"/g, "\"");
+				if ( names[i] == "date" ) {
+					v = new Date(v * 1000)
+				} 
+				entry[names[i]] = v;
+				i += 1;
+			}
+			wallet_txs.push(entry)
+		})
+	}
+
+	function loadWallets(path) {
+		let wallet_txs = []
+		fs
+		.readdirSync(path)
+		.filter(fn => fn.endsWith(".csv"))
+		.forEach((filename) => {
+			loadWallet(path, filename, wallet_txs)
+		})
+		return wallet_txs;
+	}
+
+	// load wallet txs from csv files (exported from EC)
+	const wallet_txs = loadWallets(config.selector.electron_cash_wallet_exports.directory);
+
+	// index wallet txs by hash (there may be duplicates, so use an [])
+	const wallet_txs_by_hash = wallet_txs.reduce((o, tx) => {
+		if (!o[tx.tx_hash]) {
+			o[tx.tx_hash] = [];
+		}
+		o[tx.tx_hash].push(tx);
+		return o;
+	}, {})
+
+	// return promise of list of candidate txs
+	return Promise.all(
+		// filter wallet txs for settlement tx candidates,...
+		wallet_txs.filter(tx => ( true
+				&& tx.date >= config.selector.electron_cash_wallet_exports.start_date
+				&& tx.delta > 0.00001 // <- TODO: think about this one
+				&& wallet_txs_by_hash[tx.tx_hash].length == 1
+			)
+		)
+	)
+
+}
+
+// --- main -----------------------------------------------------------------------------------------------
+
 // instantiate AnyHedgeManager and ElectrumClient
 const manager = new AnyHedgeManager();
 const electrum = new ElectrumClient('anyhedge settlement tx parser by molec', '1.4.1', 'bch.imaginary.cash');
@@ -133,17 +200,32 @@ await electrum.connect();
 
 // --- setup and execute promise chain(s) ---
 
-var datas = await Promise.all( // collect all transactions involving configured payout_addresses
-	config.payout_addresses.map(payout_address => 
-		electrum.request('blockchain.address.get_history', payout_address)
-		.then(txs => {
-			txs.forEach(tx => { tx.payout_address = payout_address })
-			return txs;
-		})
+var datas;
+
+if (config.selector.electron_cash_wallet_exports) {
+
+	datas = handleWalletExports()
+
+} else if (config.selector.payout_addresses) {
+
+	datas = Promise.all( // collect all transactions involving configured payout_addresses
+		config.selector.payout_addresses.map(payout_address => 
+			electrum.request('blockchain.address.get_history', payout_address)
+			.then(txs => {
+				txs.forEach(tx => { tx.payout_address = payout_address })
+				return txs;
+			})
+		)
 	)
-)
-.then(flattenArrays) // flatten array of arrays => array
-.then(datas => Promise.all(datas.map(data => parse_anyhedge_tx(data)))) // attempt to parse txs as anyhedge settlement txs
+	.then(flattenArrays) // flatten array of arrays => array
+
+} else {
+	console.log("you need to configure either 'selector.payout_addresses' or 'selector.electron_cash_wallet_exports' in config.js")
+}
+
+datas
+//.then(console.log)
+.then(datas => Promise.all(datas.map(data => parse_anyhedge_tx(data))))
 .then(datas => datas.filter(data => data)) // filter out unsuccessful parse attempts
 .then(datas => { // attempt to parse txs as anyhedge settlement txs
 	return Promise.all(datas.map(data => {
