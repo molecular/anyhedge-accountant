@@ -33,7 +33,7 @@ export default {
 
 		// "prefunding_tx.hash",
 		// "funding_tx.hash",
-		//"payout_tx.hash",
+		// "payout_tx.hash",
 
 		"prefunding_tx.time",
 		"funding_tx.time",
