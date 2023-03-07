@@ -12,8 +12,7 @@
   "dependencies": {
     "@generalprotocols/anyhedge": "^1.0.0",
     "csv-stringify": "^6.2.1",
-    "electrum-cash": "^2.0.10",
-    "json-arraybuffer-reviver": "=1.0.2"
+    "electrum-cash": "^2.0.10"
   },
   "type": "module"
 }
