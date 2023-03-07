@@ -2,4 +2,7 @@ TODO
 
  * Use BigNumber or Decimal for amount conversions/comparisons
  * offer formatted output columns for amounts, times
+
+ * somehow register and output negative premium payments (it's an output to payout_address in funding tx)
+ * somehow identify and output refunds
  
