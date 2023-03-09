@@ -42,3 +42,9 @@ The tool currently relies on the following assumption:
 to identify the prefunding_tx
 
 This assumption will likely not hold in the future: GP said they might at some point randomize that order.
+
+## CAVEAT2
+
+The concept of a prefunding tx does not always make sense. For example paytaca funds the contract directly from your wallet.
+
+I could remove the whole prefunding_tx, but it might give valuable info for BCHBull users and maybe for manually setup contracts, so I'm leaving it in there. Just be aware prefunding_tx might not always make sense.
