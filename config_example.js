@@ -15,7 +15,7 @@ export default {
 
 	// selector: {
 	// 	electron_cash_wallet_exports: {
-	// 		directory: "/home/someguy/wallet_exports/",
+	// 		directory: "/path/to/ec/wallet/export/csvs",
 	// 		start_date: new Date('2022-08-01')
 	// 	}
 	// },
@@ -28,8 +28,12 @@ export default {
 
 		"derived.side",
 		"derived.actualDurationInSeconds",
-		"derived.fundingAmountInSatoshis",
-		"derived.payoutInSatoshis",
+		
+		//"derived.fundingAmountInSatoshis",
+		"reformatted.fundingAmountInBCH",
+
+		//"derived.payoutInSatoshis",
+		"reformatted.payoutInBCH",
 
 		// "prefunding_tx.hash",
 		// "funding_tx.hash",
@@ -46,5 +50,10 @@ export default {
 		// in case you used electron_cash_wallet_exports selector, the following columns also available for export
 		// "wallet",
 		// "label",
+	],
+
+	reformat_sats_2_bch: [
+		{ src: "derived.fundingAmountInSatoshis", dest: "fundingAmountInBCH" },
+		{ src: "derived.payoutInSatoshis", dest: "payoutInBCH" },
 	]
 }
