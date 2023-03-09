@@ -6,15 +6,20 @@ import readline from 'readline';
 import { open } from 'node:fs/promises';
 import { stringify } from 'csv-stringify';
 import { decodeTransaction } from '@bitauth/libauth';
+import { BigNumber } from 'bignumber.js';
 
 import config from './config.js';
 
+const sats_per_bch = new BigNumber("1E8");
+const bch_output_decimals = 8;
+
 // fetches settlement tx candidates from electrum and uses general protocols anyhedge settlement transaction parser on it
 const parse_anyhedge_tx = async function(data) {
-	return electrum.request('blockchain.transaction.get', data.tx_hash)
-	.then(hex =>  {
+	return electrum.request('blockchain.transaction.get', data.tx_hash, true)
+	.then(tx =>  {
 		// parse settlement tx
-		return manager.parseSettlementTransaction(hex)
+		data.payout_tx = tx;
+		return manager.parseSettlementTransaction(tx.hex)
 		.then(anyhedge_data => {
 			data.anyhedge = anyhedge_data
 			return data;
@@ -22,22 +27,6 @@ const parse_anyhedge_tx = async function(data) {
 		.catch(err => { }) // silently ignore non-anyhedge tx
 	});
 
-}
-
-// fetches payout (settlement) tx
-const findPayoutTx = function(data) {
-	return electrum.request('blockchain.transaction.get', data.anyhedge.settlement.settlementTransactionHash, true)
-	.then((tx) => {
-		data.payout_tx = tx
-		// when using wallet exports, find payout_address by matching delta to vout.value
-		if (config.selector.electron_cash_wallet_exports) {
-			data.payout_tx.vout.forEach(vout => {
-				if (vout.value == Number(data.delta)) data.payout_address = vout.scriptPubKey.addresses[0];
-			})
-		}
-		return data;
-	})
-	.catch((err) => { console.log(err) })
 }
 
 // fetches funding tx mentioned in settlement data 
@@ -55,8 +44,7 @@ const findFundingTx = async function(data) {
 
 // finds "prefunding" tx (the parent tx that contributed users funding to "real" funding tx) 
 // also determines some derived values like "side", fundingAmountInSatoshis, payoutInSatoshis
-const findPrefundingTx = function(data) {
-
+const findPrefundingTx = async function(data) {
 	// determine which side our user is 
 	// and set data.derived.side and data.derived.payoutInSatoshis accordingly
 	// also set user_funding_index to be able to find prefunding tx later
@@ -70,31 +58,32 @@ const findPrefundingTx = function(data) {
 	data.derived = {
 		side: '<unkown>'
 	}
-	var user_funding_index;
 	if (hedge_vout && hedge_vout.scriptPubKey.addresses.includes(data.payout_address)) {
 		data.derived.side = 'hedge';
-		data.derived.fundingAmountInSatoshis = Math.round(hedge_vout.value * 1E8);
+//		data.derived.payin = 
 		data.derived.payoutInSatoshis = data.anyhedge.settlement.hedgePayoutInSatoshis;
-		user_funding_index = 0
 	}
 	if (long_vout && long_vout.scriptPubKey.addresses.includes(data.payout_address)) {
 		data.derived.side = 'long';
-		data.derived.fundingAmountInSatoshis = Math.round(long_vout.value * 1E8);
 		data.derived.payoutInSatoshis = data.anyhedge.settlement.longPayoutInSatoshis;
-		user_funding_index = 1
 	}
 
-	// find and retrieve prefunding tx
-	if (user_funding_index) {
-		var prefunding_txid = data.funding_tx.vin[user_funding_index].txid // first input of funding tx is user funding
-		return electrum.request('blockchain.transaction.get', prefunding_txid, true)
-		.then(tx => {
-			data.prefunding_tx = tx 
-			return data;
-		});
-	} else {
+	// to actually find prefunding tx, we use the following assumption:
+	// "first input of funding_tx is from hedge side, last input of funding_tx is from long side"
+	var vin = data.funding_tx.vin.slice(data.derived.side == 'hedge' ? 0 : -1)[0];
+
+	// retrieve prefunding tx
+	return electrum.request('blockchain.transaction.get', vin.txid, true)
+	.then(tx => {
+		data.prefunding_tx = tx 
+		// the following is wrong, we need to sum up all the vins from address matching the first/last vin
+		data.derived.fundingAmountInSatoshis = new BigNumber(data.prefunding_tx.vout[vin.vout].value).multipliedBy(sats_per_bch).toFixed(0);
 		return data;
-	}
+	})
+	.catch(err => {
+		console.log(err);
+		return data;
+	})
 }	
 
 // calculate more drived values
@@ -102,6 +91,29 @@ const deriveMoreData = function(data) {
 	data.derived.actualDurationInSeconds = data.payout_tx.time - data.funding_tx.time;
 	return data;
 }
+
+const reformatSomeData = function(data) {
+	const getKeyValue = (obj, path) => {
+	  const keys = path.split('.')
+	  while (keys.length) {
+	    let loc = keys.shift()
+	    if (obj.hasOwnProperty(loc)) {
+	      obj = obj[loc]
+	    } else {
+	      obj = undefined
+	      break
+	    }
+	  }
+	  return obj
+	}	
+
+	if (!data.reformatted) data.reformatted = {};
+	config.reformat_sats_2_bch.forEach(r => {
+		data.reformatted[r.dest] = BigNumber(getKeyValue(data, r.src)).integerValue().dividedBy(sats_per_bch).toFixed(bch_output_decimals);	
+	});
+
+	return data;
+} 
 
 // write configured data items to CSV
 const writeCSV = function(filename) {
@@ -212,6 +224,8 @@ if (config.selector.electron_cash_wallet_exports) {
 		config.selector.payout_addresses.map(payout_address => 
 			electrum.request('blockchain.address.get_history', payout_address)
 			.then(txs => {
+				//txs = txs.filter(tx => tx.hash == '51f83fb88769acaee3dcfbe54cc64e4c969005590f4e6883d45a3a826e974af2' )
+				//txs = txs.slice(2,1) // temp
 				txs.forEach(tx => { tx.payout_address = payout_address })
 				return txs;
 			})
@@ -229,10 +243,10 @@ datas
 .then(datas => datas.filter(data => data)) // filter out unsuccessful parse attempts
 .then(datas => { // attempt to parse txs as anyhedge settlement txs
 	return Promise.all(datas.map(data => {
-		return findPayoutTx(data)
-		.then(findFundingTx)
+		return findFundingTx(data)
 		.then(findPrefundingTx)
 		.then(deriveMoreData)
+		.then(reformatSomeData)
 	}));
 })
 //.then(console.log)
