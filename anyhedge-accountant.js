@@ -76,13 +76,25 @@ const findPrefundingTx = async function(data) {
 	return electrum.request('blockchain.transaction.get', vin.txid, true)
 	.then(tx => {
 		data.prefunding_tx = tx 
-		// the following is wrong, we need to sum up all the vins from address matching the first/last vin
-		data.derived.fundingAmountInSatoshis = new BigNumber(data.prefunding_tx.vout[vin.vout].value).multipliedBy(sats_per_bch).toFixed(0);
 		return data;
 	})
-	.catch(err => {
-		console.log(err);
-		return data;
+	.then(data => {
+		var prefunding_deposit_address = data.prefunding_tx.vout[vin.vout].scriptPubKey.addresses[0];
+		// sum all the values of the inputs to funding tx that match prefunding_deposit_address
+		var o = new BigNumber(0);
+		return Promise.all(
+			data.funding_tx.vin.map(vin => { 
+				return electrum.request('blockchain.transaction.get', vin.txid, true)
+				.then(tx => tx.vout[vin.vout])
+			})
+		).then(vouts => {
+			var prefunding_value = vouts.reduce((o, vout) => {
+				if (vout.scriptPubKey.addresses[0] == prefunding_deposit_address) o = o.plus(vout.value)
+					return o;
+			}, new BigNumber(0));
+			data.derived.fundingAmountInSatoshis = prefunding_value.multipliedBy(sats_per_bch).toFixed(0);
+			return data;
+		})
 	})
 }	
 

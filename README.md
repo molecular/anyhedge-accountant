@@ -33,3 +33,12 @@ you will end up with 2 output files:
   * `out.json`: all the data that was collected
   * `out.csv`: just a subset of the data (defined in config.js) in tabular form
 
+## CAVEAT
+
+The tool currently relies on the following assumption:
+
+    first input of funding_tx is from hedge side, last input of funding_tx is from long side
+
+to identify the prefunding_tx
+
+This assumption will likely not hold in the future: GP said they might at some point randomize that order.
