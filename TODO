@@ -1,7 +1,9 @@
 TODO
 
- * Use BigNumber or Decimal for amount conversions/comparisons
+ * Use BigNumber or Decimal for amount comparisons
  * offer formatted output columns for amounts, times
+ * in case user supplies wallet data, simplify (and make more reliable) prefunding_tx identification and derived.fundingAmountInSatoshis calculation
+
 
  * somehow register and output negative premium payments (it's an output to payout_address in funding tx)
  * somehow identify and output refunds
