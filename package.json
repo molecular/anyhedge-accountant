@@ -13,7 +13,8 @@
     "@generalprotocols/anyhedge": "^1.0.0",
     "bignumber.js": "^9.1.1",
     "csv-stringify": "^6.2.1",
-    "electrum-cash": "^2.0.10"
+    "electrum-cash": "^2.0.10",
+    "moment": "^2.29.4"
   },
   "type": "module"
 }

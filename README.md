@@ -35,9 +35,10 @@ you will end up with 2 output files:
 
 ## CAVEAT
 
-The tool currently relies on the following assumption:
+The tool currently relies on the following assumptions:
 
-    first input of funding_tx is from hedge side, last input of funding_tx is from long side
+   * first input of funding_tx is from hedge side, last input of funding_tx is from long side
+   * any change outputs of funding_tx go back to the respective input addresses
 
 to identify the prefunding_tx
 

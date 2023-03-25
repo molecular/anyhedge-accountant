@@ -35,25 +35,39 @@ export default {
 		//"derived.payoutInSatoshis",
 		"reformatted.payoutInBCH",
 
-		// "prefunding_tx.hash",
-		// "funding_tx.hash",
-		// "payout_tx.hash",
-
 		"prefunding_tx.time",
 		"funding_tx.time",
 		"payout_tx.time",
 
+		"reformatted.prefunding_tx_time",
+		"reformatted.funding_tx_time",
+		"reformatted.payout_tx_time",
+
 		"anyhedge.settlement.settlementType",
-		// "anyhedge.settlement.hedgePayoutInSatoshis",
-		// "anyhedge.settlement.longPayoutInSatoshis",
+		"anyhedge.settlement.hedgePayoutInSatoshis",
+		"anyhedge.settlement.longPayoutInSatoshis",
 
 		// in case you used electron_cash_wallet_exports selector, the following columns also available for export
-		// "wallet",
-		// "label",
+		"wallet",
+		"label",
+
+		"prefunding_tx.hash",
+		"funding_tx.hash",
+		"payout_tx.hash",
+
 	],
+
+	electrum_server: "fulcrum.criptolayer.net",
 
 	reformat_sats_2_bch: [
 		{ src: "derived.fundingAmountInSatoshis", dest: "fundingAmountInBCH" },
 		{ src: "derived.payoutInSatoshis", dest: "payoutInBCH" },
+	],
+
+	date_format: "YYYY-MM-DD HH:mm:ss",
+	reformat_date: [
+		{ src: "prefunding_tx.time", dest: "prefunding_tx_time" },
+		{ src: "funding_tx.time", dest: "funding_tx_time" },
+		{ src: "payout_tx.time", dest: "payout_tx_time" }
 	]
 }

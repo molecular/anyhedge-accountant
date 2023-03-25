@@ -7,6 +7,7 @@ import { open } from 'node:fs/promises';
 import { stringify } from 'csv-stringify';
 import { decodeTransaction } from '@bitauth/libauth';
 import { BigNumber } from 'bignumber.js';
+import moment from 'moment';
 
 import config from './config.js';
 
@@ -50,7 +51,7 @@ const findPrefundingTx = async function(data) {
 	// also set user_funding_index to be able to find prefunding tx later
 	var long_vout, hedge_vout = (null, null)
 	data.payout_tx.vout.forEach(vout => {
-		//console.log("vout.value*1E8", vout.value*1E8) 
+// console.log("vout.value*1E8", vout.value*1E8, "vs hege", data.anyhedge.settlement.hedgePayoutInSatoshis) 
 		// TODO: this is not good way to compare
 		if (Math.round(vout.value * 1E8) == data.anyhedge.settlement.hedgePayoutInSatoshis) hedge_vout = vout;
 		if (Math.round(vout.value * 1E8) == data.anyhedge.settlement.longPayoutInSatoshis) long_vout = vout;
@@ -60,7 +61,6 @@ const findPrefundingTx = async function(data) {
 	}
 	if (hedge_vout && hedge_vout.scriptPubKey.addresses.includes(data.payout_address)) {
 		data.derived.side = 'hedge';
-//		data.derived.payin = 
 		data.derived.payoutInSatoshis = data.anyhedge.settlement.hedgePayoutInSatoshis;
 	}
 	if (long_vout && long_vout.scriptPubKey.addresses.includes(data.payout_address)) {
@@ -88,11 +88,20 @@ const findPrefundingTx = async function(data) {
 				.then(tx => tx.vout[vin.vout])
 			})
 		).then(vouts => {
+			// sum up the prefunding_tx vouts to prefunding_deposit_address
 			var prefunding_value = vouts.reduce((o, vout) => {
 				if (vout.scriptPubKey.addresses[0] == prefunding_deposit_address) o = o.plus(vout.value)
 					return o;
 			}, new BigNumber(0));
-			data.derived.fundingAmountInSatoshis = prefunding_value.multipliedBy(sats_per_bch).toFixed(0);
+
+			// sum up funding_tx change outputs to prefunding_deposit_adddress
+			var funding_change = data.funding_tx.vout.reduce((o, vout) => {
+				if (vout.scriptPubKey.addresses[0] == prefunding_deposit_address) o = o.plus(vout.value)
+					return o;
+			}, new BigNumber(0));
+
+			// calculate and store funding amount
+			data.derived.fundingAmountInSatoshis = prefunding_value.minus(funding_change).multipliedBy(sats_per_bch).toFixed(0);
 			return data;
 		})
 	})
@@ -120,9 +129,16 @@ const reformatSomeData = function(data) {
 	}	
 
 	if (!data.reformatted) data.reformatted = {};
+
+	// reformat_sats_2_bch
 	config.reformat_sats_2_bch.forEach(r => {
 		data.reformatted[r.dest] = BigNumber(getKeyValue(data, r.src)).integerValue().dividedBy(sats_per_bch).toFixed(bch_output_decimals);	
 	});
+
+	// reformat_date
+	config.reformat_date.forEach(r => {
+		data.reformatted[r.dest] = moment(Number(getKeyValue(data, r.src))*1000).format(config.date_format)
+	})
 
 	return data;
 } 
@@ -219,7 +235,7 @@ function handleWalletExports() {
 
 // instantiate AnyHedgeManager and ElectrumClient
 const manager = new AnyHedgeManager();
-const electrum = new ElectrumClient('anyhedge settlement tx parser by molec', '1.4.1', 'bch.imaginary.cash');
+const electrum = new ElectrumClient('anyhedge settlement tx parser by molec', '1.4.1', config.electrum_server);
 await electrum.connect();
 
 // --- setup and execute promise chain(s) ---
@@ -236,8 +252,8 @@ if (config.selector.electron_cash_wallet_exports) {
 		config.selector.payout_addresses.map(payout_address => 
 			electrum.request('blockchain.address.get_history', payout_address)
 			.then(txs => {
-				//txs = txs.filter(tx => tx.hash == '51f83fb88769acaee3dcfbe54cc64e4c969005590f4e6883d45a3a826e974af2' )
-				//txs = txs.slice(2,1) // temp
+				//txs = txs.filter(tx => tx.tx_hash == '<insert hash>' )
+				//txs = txs.slice(1,10) // temp
 				txs.forEach(tx => { tx.payout_address = payout_address })
 				return txs;
 			})
