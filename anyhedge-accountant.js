@@ -70,7 +70,7 @@ const findPrefundingTx = async function(data) {
 
 	// to actually find prefunding tx, we use the following assumption:
 	// "first input of funding_tx is from hedge side, last input of funding_tx is from long side"
-	var vin = data.funding_tx.vin.slice(data.derived.side == 'hedge' ? 0 : -1)[0];
+	var vin = data.funding_tx.vin.slice(data.role == 'maker' ? -1 : 0)[0];
 
 	// retrieve prefunding tx
 	return electrum.request('blockchain.transaction.get', vin.txid, true)
@@ -250,11 +250,11 @@ if (config.selector.electron_cash_wallet_exports) {
 
 	datas = Promise.all( // collect all transactions involving configured payout_addresses
 		config.selector.payout_addresses.map(payout_address => 
-			electrum.request('blockchain.address.get_history', payout_address)
+			electrum.request('blockchain.address.get_history', payout_address.address)
 			.then(txs => {
 				//txs = txs.filter(tx => tx.tx_hash == '<insert hash>' )
 				//txs = txs.slice(1,10) // temp
-				txs.forEach(tx => { tx.payout_address = payout_address })
+				txs.forEach(tx => { tx.payout_address = payout_address.address; tx.role = payout_address.role })
 				return txs;
 			})
 		)

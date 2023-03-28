@@ -3,11 +3,12 @@ export default {
 	// there's 2 methods you can use for tx selection 
 	// (use one and comment out the other one)
 
-	// selector method #1: list of payout addresses
+	// selector method #1: list of payout addresses plus role (ususuall "taker" unless you want to take the view of the market maker bot)
 
 	selector: {
 		payout_addresses: [
-			"bitcoincash:qpuq03pvngt50dedz94lqwc7vfckekwwcv59g07jc7", // some guys paytaca payout address
+			{ address: "bitcoincash:qpuq03pvngt50dedz94lqwc7vfckekwwcv59g07jc7", role: "taker" }, // some guys paytaca payout address
+			// { address: "bitcoincash:qq2qjesqhy78k5xznl39tqkyjphegmn5hum4sckvhp", role: "maker" } // General Protocols market maker bot (liquidity provider)
 		]
 	},
 
