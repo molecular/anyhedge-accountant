@@ -7,7 +7,7 @@ export default {
 
 	selector: {
 		payout_addresses: [
-			{ address: "bitcoincash:qpuq03pvngt50dedz94lqwc7vfckekwwcv59g07jc7", role: "taker" }, // some guys paytaca payout address
+			{ address: "bitcoincash:qpuq03pvngt50dedz94lqwc7vfckekwwcv59g07jc7", role: "maker" }, // some guys paytaca payout address
 			// { address: "bitcoincash:qq2qjesqhy78k5xznl39tqkyjphegmn5hum4sckvhp", role: "maker" } // General Protocols market maker bot (liquidity provider)
 		]
 	},
@@ -22,6 +22,7 @@ export default {
 	// },
 
 	// configuring the following is optional (if needed)
+	output_filename: "out",
 
 	// choose from the data you see in out.json
 	csv_output_columns: [

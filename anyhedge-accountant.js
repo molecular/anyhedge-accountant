@@ -94,14 +94,15 @@ const findPrefundingTx = async function(data) {
 					return o;
 			}, new BigNumber(0));
 
-			// sum up funding_tx change outputs to prefunding_deposit_adddress
-			var funding_change = data.funding_tx.vout.reduce((o, vout) => {
-				if (vout.scriptPubKey.addresses[0] == prefunding_deposit_address) o = o.plus(vout.value)
-					return o;
-			}, new BigNumber(0));
+			// sum up funding_tx change outputs not to prefunding_deposit_adddress
+			// var funding_change = data.funding_tx.vout.reduce((o, vout) => {
+			// 	if (vout.scriptPubKey.addresses[0] != prefunding_deposit_address) o = o.plus(vout.value)
+			// 		return o;
+			// }, new BigNumber(0));
 
 			// calculate and store funding amount
-			data.derived.fundingAmountInSatoshis = prefunding_value.minus(funding_change).multipliedBy(sats_per_bch).toFixed(0);
+			//data.derived.fundingAmountInSatoshis = prefunding_value.minus(funding_change).multipliedBy(sats_per_bch).toFixed(0);
+			data.derived.fundingAmountInSatoshis = prefunding_value.multipliedBy(sats_per_bch).toFixed(0);
 			return data;
 		})
 	})
@@ -278,8 +279,8 @@ datas
 	}));
 })
 //.then(console.log)
-.then(writeCSV("out.csv"))
-.then(writeJSON("out.json"))
+.then(writeCSV(config.output_filename + ".csv"))
+.then(writeJSON(config.output_filename + ".json"))
 
 //console.log("datas", datas)
 // console.log("datas[0]", datas[0])
