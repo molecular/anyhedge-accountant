@@ -38,7 +38,7 @@ you will end up with 2 output files:
 The tool currently relies on the following assumptions:
 
    * first input of funding_tx is from maker (usually the LP), last input of funding_tx is from taker (usually YOU)
-   * any change outputs of funding_tx go back to the respective input addresses
+   * any change outputs of funding_tx go back to the respective input addresses (puzzling, not sure about this, code removed)
 
 to identify the prefunding_tx
 

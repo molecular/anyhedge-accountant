@@ -68,9 +68,24 @@ const findPrefundingTx = async function(data) {
 		data.derived.payoutInSatoshis = data.anyhedge.settlement.longPayoutInSatoshis;
 	}
 
-	// to actually find prefunding tx, we use the following assumption:
-	// "first input of funding_tx is from hedge side, last input of funding_tx is from long side"
-	var vin = data.funding_tx.vin.slice(data.role == 'maker' ? -1 : 0)[0];
+	// locate funding_tx.vin that is "our" prefunding tx
+	var vin;
+
+	// first look for any input to funding_tx that is in our wallets
+	if (wallet_txs_by_hash) {
+		data.funding_tx.vin.forEach(vin_candidate => {
+			if (wallet_txs_by_hash[vin_candidate.txid]) {
+				vin = vin_candidate;
+			}
+		})
+	}
+
+	// if not found, use heuristic
+	if (!vin) {
+		// to actually find prefunding tx, we use the following assumption:
+		// "first input of funding_tx is from taker, last input of funding_tx is from maker"
+		var vin = data.funding_tx.vin.slice(data.role == 'maker' ? -1 : 0)[0];
+	}
 
 	// retrieve prefunding tx
 	return electrum.request('blockchain.transaction.get', vin.txid, true)
@@ -79,32 +94,42 @@ const findPrefundingTx = async function(data) {
 		return data;
 	})
 	.then(data => {
-		var prefunding_deposit_address = data.prefunding_tx.vout[vin.vout].scriptPubKey.addresses[0];
-		// sum all the values of the inputs to funding tx that match prefunding_deposit_address
-		var o = new BigNumber(0);
-		return Promise.all(
-			data.funding_tx.vin.map(vin => { 
-				return electrum.request('blockchain.transaction.get', vin.txid, true)
-				.then(tx => tx.vout[vin.vout])
-			})
-		).then(vouts => {
-			// sum up the prefunding_tx vouts to prefunding_deposit_address
-			var prefunding_value = vouts.reduce((o, vout) => {
-				if (vout.scriptPubKey.addresses[0] == prefunding_deposit_address) o = o.plus(vout.value)
-					return o;
-			}, new BigNumber(0));
+		var vout = data.prefunding_tx.vout[vin.vout]
+		data.prefunding_deposit_address = vout.scriptPubKey.addresses[0];
+		data.derived.fundingAmountInSatoshis = BigNumber(vout.value).multipliedBy(sats_per_bch).toFixed(0);
+		return data;
+		// var prefunding_deposit_address = data.prefunding_tx.vout[vin.vout].scriptPubKey.addresses[0];
+		// // sum all the values of the inputs to funding tx that match prefunding_deposit_address
+		// data.prefunding_deposit_address = prefunding_deposit_address
+		// var o = new BigNumber(0);
+		// return Promise.all(
+		// 	data.funding_tx.vin.map(vin => { 
+		// 		return electrum.request('blockchain.transaction.get', vin.txid, true)
+		// 		// .then(tx => {
+		// 		// 	if (data.prefunding_tx.txid = 'de1e814f4e1a50e2e0d540eb25c4e0d71f08eb1fcb9718bce397678943b0a993')
+		// 		// 		console.log("  tx", tx)
+		// 		// 	return tx;
+		// 		// })
+		// 		.then(tx => tx.vout[vin.vout])
+		// 	})
+		// ).then(vouts => {
+		// 	// sum up the prefunding_tx vouts to prefunding_deposit_address
+		// 	var prefunding_value = vouts.reduce((o, vout) => {
+		// 		if (vout.scriptPubKey.addresses[0] == prefunding_deposit_address) o = o.plus(vout.value)
+		// 			return o;
+		// 	}, new BigNumber(0));
 
-			// sum up funding_tx change outputs not to prefunding_deposit_adddress
-			// var funding_change = data.funding_tx.vout.reduce((o, vout) => {
-			// 	if (vout.scriptPubKey.addresses[0] != prefunding_deposit_address) o = o.plus(vout.value)
-			// 		return o;
-			// }, new BigNumber(0));
+		// 	// sum up funding_tx change outputs not to prefunding_deposit_adddress
+		// 	var funding_change = data.funding_tx.vout.reduce((o, vout) => {
+		// 		if (vout.scriptPubKey.addresses[0] == prefunding_deposit_address) o = o.plus(vout.value)
+		// 			return o;
+		// 	}, new BigNumber(0));
 
-			// calculate and store funding amount
-			//data.derived.fundingAmountInSatoshis = prefunding_value.minus(funding_change).multipliedBy(sats_per_bch).toFixed(0);
-			data.derived.fundingAmountInSatoshis = prefunding_value.multipliedBy(sats_per_bch).toFixed(0);
-			return data;
-		})
+		// 	// calculate and store funding amount
+		// 	data.derived.fundingAmountInSatoshis = prefunding_value.minus(funding_change).multipliedBy(sats_per_bch).toFixed(0);
+		// 	//data.derived.fundingAmountInSatoshis = prefunding_value.multipliedBy(sats_per_bch).toFixed(0);
+		// 	return data;
+		// })
 	})
 }	
 
@@ -159,6 +184,8 @@ const writeCSV = function(filename) {
 	}; 
 }
 
+var wallet_txs, wallet_txs_by_hash;
+
 // write JSON
 const writeJSON = function(filename) {
 	return (results) => {
@@ -208,17 +235,19 @@ function handleWalletExports() {
 	}
 
 	// load wallet txs from csv files (exported from EC)
-	const wallet_txs = loadWallets(config.selector.electron_cash_wallet_exports.directory);
+	wallet_txs = loadWallets(config.selector.electron_cash_wallet_exports.directory);
 
 	// index wallet txs by hash (there may be duplicates, so use an [])
-	const wallet_txs_by_hash = wallet_txs.reduce((o, tx) => {
+	wallet_txs_by_hash = wallet_txs.reduce((o, tx) => {
 		if (!o[tx.tx_hash]) {
 			o[tx.tx_hash] = [];
 		}
 		o[tx.tx_hash].push(tx);
 		return o;
 	}, {})
+}
 
+function getCandidateTxsFromWallets() {
 	// return promise of list of candidate txs
 	return Promise.all(
 		// filter wallet txs for settlement tx candidates,...
@@ -229,7 +258,6 @@ function handleWalletExports() {
 			)
 		)
 	)
-
 }
 
 // --- main -----------------------------------------------------------------------------------------------
@@ -244,10 +272,11 @@ await electrum.connect();
 var datas;
 
 if (config.selector.electron_cash_wallet_exports) {
+	handleWalletExports()
+}
 
-	datas = handleWalletExports()
-
-} else if (config.selector.payout_addresses) {
+if (config.selector.payout_addresses) {
+	handleWalletExports()
 
 	datas = Promise.all( // collect all transactions involving configured payout_addresses
 		config.selector.payout_addresses.map(payout_address => 
@@ -261,6 +290,10 @@ if (config.selector.electron_cash_wallet_exports) {
 		)
 	)
 	.then(flattenArrays) // flatten array of arrays => array
+
+} else if (config.selector.electron_cash_wallet_exports) {
+
+	datas = getCandidateTxsFromWallets()
 
 } else {
 	console.log("you need to configure either 'selector.payout_addresses' or 'selector.electron_cash_wallet_exports' in config.js")
