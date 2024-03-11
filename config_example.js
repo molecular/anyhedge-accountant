@@ -10,15 +10,20 @@ export default {
 			{ address: "bitcoincash:qpuq03pvngt50dedz94lqwc7vfckekwwcv59g07jc7", role: "maker" }, // some guys paytaca payout address
 			// { address: "bitcoincash:qq2qjesqhy78k5xznl39tqkyjphegmn5hum4sckvhp", role: "maker" } // General Protocols market maker bot (liquidity provider)
 		]
+		// additionally you can supply wallet exports to make prefunding_tx selection more reliable in some cases
+		electron_cash_wallet_exports: [{
+			directories: ["/path/to/ec/wallet/export/csvs"],
+			start_date: new Date('2022-08-01')
+		}]
 	},
 
 	// selector method #2: directory with electron-cash history export CSV
 
 	// selector: {
-	// 	electron_cash_wallet_exports: {
-	// 		directory: "/path/to/ec/wallet/export/csvs",
+	// 	electron_cash_wallet_exports: [{
+	// 		directories: ["/path/to/ec/wallet/export/csvs"],
 	// 		start_date: new Date('2022-08-01')
-	// 	}
+	// 	}]
 	// },
 
 	// configuring the following is optional (if needed)

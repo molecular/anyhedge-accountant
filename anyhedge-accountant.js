@@ -223,19 +223,21 @@ function handleWalletExports() {
 		})
 	}
 
-	function loadWallets(path) {
+	function loadWallets(paths) {
 		let wallet_txs = []
-		fs
-		.readdirSync(path)
-		.filter(fn => fn.endsWith(".csv"))
-		.forEach((filename) => {
-			loadWallet(path, filename, wallet_txs)
+		paths.forEach((path) => {
+			fs
+			.readdirSync(path)
+			.filter(fn => fn.endsWith(".csv"))
+			.forEach((filename) => {
+				loadWallet(path, filename, wallet_txs)
+			})
 		})
 		return wallet_txs;
 	}
 
 	// load wallet txs from csv files (exported from EC)
-	wallet_txs = loadWallets(config.selector.electron_cash_wallet_exports.directory);
+	wallet_txs = loadWallets(config.selector.electron_cash_wallet_exports.directories);
 
 	// index wallet txs by hash (there may be duplicates, so use an [])
 	wallet_txs_by_hash = wallet_txs.reduce((o, tx) => {
@@ -282,8 +284,8 @@ if (config.selector.payout_addresses) {
 		config.selector.payout_addresses.map(payout_address => 
 			electrum.request('blockchain.address.get_history', payout_address.address)
 			.then(txs => {
-				//txs = txs.filter(tx => tx.tx_hash == '<insert hash>' )
-				//txs = txs.slice(1,10) // temp
+				//txs = txs.filter(tx => tx.tx_hash == '<insert hash>' ) // use for debugging: filter to single payout tx hash
+				//txs = txs.slice(1,10) // use for debugging: filter to /some/ txs
 				txs.forEach(tx => { tx.payout_address = payout_address.address; tx.role = payout_address.role })
 				return txs;
 			})
