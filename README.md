@@ -49,3 +49,15 @@ This assumption will likely not hold in the future: GP said they might at some p
 The concept of a prefunding tx does not always make sense. For example paytaca funds the contract directly from your wallet.
 
 I could remove the whole prefunding_tx, but it might give valuable info for BCHBull users and maybe for manually setup contracts, so I'm leaving it in there. Just be aware prefunding_tx might not always make sense.
+
+## CAVEAT3
+
+Due to limiations of the underlying generalprotocols anyhedge parser implementation, this software detects and outputs info for exactly one anyhedge version. There are also some naming changes between those parser versions (hedgePayout -> shortPayout) so it's not an easy feat to make it work for all version.
+
+Suggestion is to use an older version of anyhedge-accountant for older anyhedge contracts (and keep the output files for each version (I'm encoding the anyhedge version into the filename myself) to import into your accounting)
+
+You can check which version is used by looking at the version of @generalprotocols/anyhedge in package.json
+
+ * @generalprotocols/anyhedge 1.x.y: anyhedge v0.11
+ * @generalprotocols/anyhedge 2.x.y: anyhedge v0.12
+

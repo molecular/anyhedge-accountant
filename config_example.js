@@ -51,7 +51,7 @@ export default {
 		"reformatted.payout_tx_time",
 
 		"anyhedge.settlement.settlementType",
-		"anyhedge.settlement.hedgePayoutInSatoshis",
+		"anyhedge.settlement.shortPayoutInSatoshis",
 		"anyhedge.settlement.longPayoutInSatoshis",
 
 		// in case you used electron_cash_wallet_exports selector, the following columns also available for export

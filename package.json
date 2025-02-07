@@ -10,7 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@generalprotocols/anyhedge": "^1.0.0",
+    "@bitauth/libauth": "^3.0.0",
+    "@generalprotocols/anyhedge": "^2.0.2",
     "bignumber.js": "^9.1.1",
     "csv-stringify": "^6.2.1",
     "electrum-cash": "^2.0.10",

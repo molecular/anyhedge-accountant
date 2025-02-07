@@ -49,19 +49,19 @@ const findPrefundingTx = async function(data) {
 	// determine which side our user is 
 	// and set data.derived.side and data.derived.payoutInSatoshis accordingly
 	// also set user_funding_index to be able to find prefunding tx later
-	var long_vout, hedge_vout = (null, null)
+	var long_vout, short_vout = (null, null)
 	data.payout_tx.vout.forEach(vout => {
-// console.log("vout.value*1E8", vout.value*1E8, "vs hege", data.anyhedge.settlement.hedgePayoutInSatoshis) 
+// console.log("vout.value*1E8", vout.value*1E8, "vs hege", data.anyhedge.settlement.shortPayoutInSatoshis) 
 		// TODO: this is not good way to compare
-		if (Math.round(vout.value * 1E8) == data.anyhedge.settlement.hedgePayoutInSatoshis) hedge_vout = vout;
+		if (Math.round(vout.value * 1E8) == data.anyhedge.settlement.shortPayoutInSatoshis) short_vout = vout;
 		if (Math.round(vout.value * 1E8) == data.anyhedge.settlement.longPayoutInSatoshis) long_vout = vout;
 	})
 	data.derived = {
 		side: '<unkown>'
 	}
-	if (hedge_vout && hedge_vout.scriptPubKey.addresses.includes(data.payout_address)) {
+	if (short_vout && short_vout.scriptPubKey.addresses.includes(data.payout_address)) {
 		data.derived.side = 'hedge';
-		data.derived.payoutInSatoshis = data.anyhedge.settlement.hedgePayoutInSatoshis;
+		data.derived.payoutInSatoshis = data.anyhedge.settlement.shortPayoutInSatoshis;
 	}
 	if (long_vout && long_vout.scriptPubKey.addresses.includes(data.payout_address)) {
 		data.derived.side = 'long';
@@ -189,7 +189,10 @@ var wallet_txs, wallet_txs_by_hash;
 // write JSON
 const writeJSON = function(filename) {
 	return (results) => {
-		fs.writeFile(filename, JSON.stringify(results), 'utf8', (err) => console.log);
+		function bigintReplacer(key, value) {
+			return typeof value === 'bigint' ? value.toString() : value;
+		}
+		fs.writeFile(filename, JSON.stringify(results, bigintReplacer), 'utf8', (err) => console.log);
 		console.log(`wrote ${results.length} items to ${filename}`)
 		return results;
 	}
@@ -207,7 +210,7 @@ function handleWalletExports() {
 		console.log("loading wallet", filename)
 		const data = fs.readFileSync(path + "/" + filename, 'UTF-8').split(/\r?\n/)
 		const valuesRegExp = /(?:\"([^\"]*(?:\"\"[^\"]*)*)\")|([^\",]+)/g;
-		const names = ["tx_hash", "label", "delta", "date"];
+		const names = ["tx_hash", "label", "delta", "fee", "date"];
 		data.forEach((d) => {
 			let i = 0, key = null, matches = null, entry = {wallet: filename};
 			while (matches = valuesRegExp.exec(d)) {
@@ -278,7 +281,6 @@ if (config.selector.electron_cash_wallet_exports) {
 }
 
 if (config.selector.payout_addresses) {
-	handleWalletExports()
 
 	datas = Promise.all( // collect all transactions involving configured payout_addresses
 		config.selector.payout_addresses.map(payout_address => 
@@ -302,7 +304,7 @@ if (config.selector.payout_addresses) {
 }
 
 datas
-//.then(console.log)
+//.then(datas => { console.log(datas); return datas })
 .then(datas => Promise.all(datas.map(data => parse_anyhedge_tx(data))))
 .then(datas => datas.filter(data => data)) // filter out unsuccessful parse attempts
 .then(datas => { // attempt to parse txs as anyhedge settlement txs
@@ -313,11 +315,6 @@ datas
 		.then(reformatSomeData)
 	}));
 })
-//.then(console.log)
+//.then((data) => { console.log(data[0]); return data; })
 .then(writeCSV(config.output_filename + ".csv"))
 .then(writeJSON(config.output_filename + ".json"))
-
-//console.log("datas", datas)
-// console.log("datas[0]", datas[0])
-// console.log("datas[0].anyhedge", datas[0].anyhedge)
-
