@@ -1,6 +1,6 @@
 # anyhedge-accountant
 
-Simple tool to retrieve accounting-relevant data for settled anyhedge contracts and output as CSV file
+Simple tool to retrieve accounting-relevant data for settled anyhedge contracts and output as both CSV and JSON files
 
 ## general mode of operation
 
