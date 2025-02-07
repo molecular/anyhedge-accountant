@@ -9,7 +9,7 @@ given either a configured list of payout addresses or a directory with electron 
  * funding tx
  * payout tx
 
-are all determined and fetched from electrum server. The users `side` is determined (hedge/long) and the data is output as csv (partial data) and json (full dump).
+are all determined and fetched from electrum server. The users `side` is determined (short/long) and the data is output as csv (partial data) and json (full dump).
 
 ## preparation
 
